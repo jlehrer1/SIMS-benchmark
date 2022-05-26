@@ -29,26 +29,22 @@ from pytorch_lightning.loggers import WandbLogger
 from networking import download 
 
 here = pathlib.Path(__file__).parent.resolve()
-data_path = join(here, '..', 'data', 'pancreas')
-
-print('Making data folder')
-os.makedirs(data_path, exist_ok=True)
 
 for file in ['labels.csv', 'pancreas.h5ad']:
     print(f'Downloading {file}')
 
-    if not os.path.isfile(join(data_path, file)):
+    if not os.path.isfile(join(here, file)):
         download(
             remote_name=join('jlehrer', 'pancreas_data', file),
-            file_name=join(data_path, file),
+            file_name=join(here, file),
         )
 
 
 # Set up the data for scVI
 data = an.read_h5ad(join(here, 'pancreas.h5ad'))
-data.X = data.X.todense()
-
 labels = pd.read_csv(join(here, 'labels.csv'), index_col="cell")
+
+data = data[labels.index.values, :] # Only the rows in index col 
 
 indices = labels.loc[:, 'celltype']
 train, val = train_test_split(indices, test_size=0.2, random_state=42, stratify=indices)
@@ -93,12 +89,11 @@ preds = lvae.predict(test_data)
 truth = labels.loc[:, 'celltype'].values
 
 acc = accuracy_score(preds, truth)
-
 f1 = f1_score(preds, truth, average=None)
 mf1 = np.nanmedian(f1)
 
-precision = precision_score(preds, truth)
-recall = recall_score(preds, truth)
+precision = precision_score(preds, truth, average="macro")
+recall = recall_score(preds, truth, average="macro")
 
 logger.log_metrics({
     "Accuracy": acc,

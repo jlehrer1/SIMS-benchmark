@@ -17,7 +17,12 @@ import pathlib
 import sys
 import anndata as an
 from sklearn.model_selection import train_test_split 
-from sklearn.metrics import accuracy_score, f1_score 
+from sklearn.metrics import (
+    accuracy_score, 
+    f1_score,
+    precision_score,
+    recall_score
+)
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 
@@ -26,7 +31,7 @@ from networking import download
 here = pathlib.Path(__file__).parent.resolve()
 
 # Download training data
-for file in ['mouse_labels.csv', 'mouse_clipped.h5ad']:
+for file in ['mouse_labels_clean.csv', 'mouse_clipped.h5ad']:
     print(f'Downloading {file}')
 
     if not os.path.isfile(file):
@@ -39,21 +44,19 @@ for file in ['mouse_labels.csv', 'mouse_clipped.h5ad']:
 data = an.read_h5ad(join(here, 'mouse_clipped.h5ad'))
 data.X = data.X.todense()
 
-labels = pd.read_csv(join(here, 'mouse_labels.csv'), index_col='cell')
+labels = pd.read_csv(join(here, 'mouse_labels_clean.csv'))
 
-mouse_data = data[labels.index.values, :]
-mouse_data.obs["label"] = mouse_data.obs["subclass_label"].values
-mouse_data.obs["label"] = pd.Series(labels["subclass_label"], dtype="category")
-mouse_data.obs = mouse_data.obs.reset_index()
+data.obs = data.obs.reset_index()
+data.obs["categorical_subclass_label"] = pd.Series(labels["categorical_subclass_label"].astype(str), dtype="category")
 
 # Set up train/val/test split same as SIMS model 
-indices = mouse_data.obs.loc[:, 'subclass_label']
+indices = data.obs.loc[:, 'categorical_subclass_label']
 train, val = train_test_split(indices, test_size=0.2, random_state=42, stratify=indices)
 train, test = train_test_split(train, test_size=0.2, random_state=42, stratify=train)
 
-train_data = mouse_data[train.index, :]
-valid_data = mouse_data[val.index, :]
-test_data = mouse_data[test.index, :]
+train_data = data[train.index, :]
+valid_data = data[val.index, :]
+test_data = data[test.index, :]
 
 # Train the scVI model 
 train_data = train_data.copy()
@@ -70,7 +73,7 @@ vae.train(
 lvae = scvi.model.SCANVI.from_scvi_model(
     vae,
     adata=train_data,
-    labels_key="subclass_label",
+    labels_key="categorical_subclass_label",
     unlabeled_category="N/A", # All are labeled, so we ignore this 
 )
 
@@ -85,12 +88,18 @@ logger = WandbLogger(
     name='Mouse Model (Allen Brain Institute Data)'
 )
 preds = lvae.predict(test_data)
-truth = test_data.obs['subclass_label'].values
+truth = test_data.obs['categorical_subclass_label'].values
 
 acc = accuracy_score(preds, truth)
-logger.log("accuracy", acc)
-
 f1 = f1_score(preds, truth, average=None)
 mf1 = np.nanmedian(f1)
 
-logger.log("Median f1", mf1)
+precision = precision_score(preds, truth, average="macro")
+recall = recall_score(preds, truth, average="macro")
+
+logger.log_metrics({
+    "Accuracy": acc,
+    "Median F1": mf1,
+    "Precision": precision,
+    "Recall": recall,
+})

@@ -9,7 +9,13 @@ import pathlib
 import sys
 import anndata as an
 from sklearn.model_selection import train_test_split 
-from sklearn.metrics import accuracy_score, f1_score 
+from sklearn.metrics import (
+    accuracy_score, 
+    f1_score,
+    precision_score,
+    recall_score
+)
+
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 
@@ -88,14 +94,20 @@ logger = WandbLogger(
     project='scANVI Comparison',
     name='Human Model (Allen Brain Institute Data)'
 )
+
 preds = lvae.predict(test_data)
 truth = test_data.obs['subclass_label'].values
 
 acc = accuracy_score(preds, truth)
-logger.log("accuracy", acc)
-
 f1 = f1_score(preds, truth, average=None)
 mf1 = np.nanmedian(f1)
 
-logger.log("Median f1", mf1)
+precision = precision_score(preds, truth, average="macro")
+recall = recall_score(preds, truth, average="macro")
 
+logger.log_metrics({
+    "Accuracy": acc,
+    "Median F1": mf1,
+    "Precision": precision,
+    "Recall": recall,
+})
