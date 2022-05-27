@@ -84,6 +84,7 @@ logger = WandbLogger(
     project='scANVI Comparison',
     name='Retina Model (Allen Brain Institute Data)'
 )
+
 preds = lvae.predict(test_data)
 truth = test_data.obs['class_label'].values
 
