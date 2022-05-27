@@ -34,7 +34,7 @@ here = pathlib.Path(__file__).parent.resolve()
 for file in ['MouseAdultInhibitoryNeurons_labels.csv', 'MouseAdultInhibitoryNeurons.h5ad']:
     print(f'Downloading {file}')
 
-    if not os.path.isfile(file):
+    if not os.path.isfile(join(here, file)):
         download(
             remote_name=join('jlehrer', 'mouse_data', file),
             file_name=join(here, file),
@@ -42,8 +42,6 @@ for file in ['MouseAdultInhibitoryNeurons_labels.csv', 'MouseAdultInhibitoryNeur
 
 # Set up the data for scVI
 data = an.read_h5ad(join(here, 'MouseAdultInhibitoryNeurons.h5ad'))
-data.X = data.X.todense()
-
 labels = pd.read_csv(join(here, 'MouseAdultInhibitoryNeurons_labels.csv'))
 
 data.obs = data.obs.reset_index()
@@ -54,18 +52,18 @@ indices = data.obs.loc[:, 'numeric_class']
 train, val = train_test_split(indices, test_size=0.2, random_state=42, stratify=indices)
 train, test = train_test_split(train, test_size=0.2, random_state=42, stratify=train)
 
-train_data = data[train.index, :]
-valid_data = data[val.index, :]
-test_data = data[test.index, :]
+train_data = data[train.index.values, :]
+valid_data = data[val.index.values, :]
+test_data = data[test.index.values, :]
 
 # Train the scVI model 
 train_data = train_data.copy()
 scvi.model.SCVI.setup_anndata(train_data)
-vae = scvi.model.SCVI(train_data, n_layers=2, n_latent=30, gene_likelihood="nb")
 
+vae = scvi.model.SCVI(train_data, n_layers=2, n_latent=30, gene_likelihood="nb")
 vae.train(
     early_stopping=True,
-    max_epochs=150,
+    max_epochs=1,
     early_stopping_patience=5,
 )
 

@@ -42,11 +42,13 @@ for file in ['labels.csv', 'pancreas.h5ad']:
 
 # Set up the data for scVI
 data = an.read_h5ad(join(here, 'pancreas.h5ad'))
-labels = pd.read_csv(join(here, 'labels.csv'), index_col="cell")
+labels = pd.read_csv(join(here, 'labels.csv'))
 
-data = data[labels.index.values, :] # Only the rows in index col 
+data = data[labels['cell'].values, :] # Only the rows in index col 
+data.obs = data.obs.reset_index()
+data.obs['celltype'] = pd.Series(labels['celltype'].astype(str), dtype="category")
 
-indices = labels.loc[:, 'celltype']
+indices = data.obs.loc[:, 'celltype']
 train, val = train_test_split(indices, test_size=0.2, random_state=42, stratify=indices)
 train, test = train_test_split(train, test_size=0.2, random_state=42, stratify=train)
 

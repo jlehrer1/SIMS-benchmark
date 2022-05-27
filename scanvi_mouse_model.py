@@ -34,7 +34,7 @@ here = pathlib.Path(__file__).parent.resolve()
 for file in ['mouse_labels_clean.csv', 'mouse_clipped.h5ad']:
     print(f'Downloading {file}')
 
-    if not os.path.isfile(file):
+    if not os.path.isfile(join(here, file)):
         download(
             remote_name=join('jlehrer', 'mouse_benchmark', file),
             file_name=join(here, file),

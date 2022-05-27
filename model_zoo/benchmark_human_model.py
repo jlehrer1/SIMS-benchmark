@@ -13,11 +13,9 @@ import torch
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 
-from data import *
-from lightning_train import *
-from model import *
+from scsims import *
 from torchmetrics.functional import *
-from networking import download, list_objects
+from networking import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
