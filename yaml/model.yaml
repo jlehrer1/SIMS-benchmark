@@ -13,14 +13,14 @@ spec:
       restartPolicy: Never
       containers:
       - name: jl-${NAME}-model
-        image: jmlehrer/sims:latest
+        image: jmlehrer/scvi-benchmark:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
-          python model_zoo/${TYPE}_model.py --name=${NAME}"
+          python model_zoo/${TYPE}_model.py --name=5-26-${NAME}"
         ]
         resources:
           limits:

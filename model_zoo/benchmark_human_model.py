@@ -6,7 +6,7 @@ import torch
 import argparse 
 
 from os.path import join, dirname, abspath
-sys.path.append(join(dirname(abspath(__file__)), '..', 'src'))
+sys.path.append(join(dirname(abspath(__file__)), '..'))
 
 from typing import *
 import torch
@@ -84,9 +84,9 @@ if __name__ == "__main__":
         labelfiles=[join(data_path, 'human_V1C_labels_clean.csv')],
         class_label='subclass_label',
         sep=',',
-        batch_size=16,
+        batch_size=256,
         index_col='cell',
-        num_workers=0,
+        num_workers=32,
         deterministic=True,
         normalize=True,
         assume_numeric_label=False,

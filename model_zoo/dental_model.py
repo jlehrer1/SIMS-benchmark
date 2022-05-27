@@ -107,14 +107,13 @@ if __name__ == "__main__":
     )
 
     if not test:
+        module.prepare_data()
+        module.setup()
+        
         model = SIMSClassifier(
             input_dim=module.num_features,
             output_dim=module.num_labels,
-            weights=compute_class_weights([join(data_path, 'labels_human_dental.tsv')], class_label, sep='\t', device=device),
-            scheduler_params={
-                'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
-                'factor': 0.75,
-            },
+            weights=module.weights,
         )
 
         trainer.fit(model, datamodule=module)

@@ -16,6 +16,6 @@ RUN curl -L https://bit.ly/glances | /bin/bash
 RUN pip install scvi-tools wandb 
 RUN pip install pytorch_lightning
 RUN pip install boto3 
-RUN pip install scsims==1.0.0
+RUN pip install scsims==1.0.2
 
 COPY . .
