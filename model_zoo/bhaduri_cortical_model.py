@@ -28,20 +28,6 @@ from networking import *
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--lr',
-        type=float,
-        default=0.02,
-        required=False,
-    )
-
-    parser.add_argument(
-        '--weight-decay',
-        type=float,
-        default=3e-4,
-        required=False,
-    )
-
-    parser.add_argument(
         '--name',
         type=str,
         default=None,
@@ -57,7 +43,7 @@ if __name__ == "__main__":
     device = ('cuda:0' if torch.cuda.is_available() else None)
 
     args = parser.parse_args()
-    lr, weight_decay, name, test = args.lr, args.weight_decay, args.name, args.test 
+    name, test = args.name, args.test 
 
     here = pathlib.Path(__file__).parent.resolve()
     data_path = join(here, '..', 'data', 'bhaduri')

@@ -20,7 +20,7 @@ spec:
           value: "1"
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
-          python model_zoo/${TYPE}_model.py --name=5-26-${NAME}"
+          python model_zoo/${TYPE}_model.py --name=5-27-${NAME}"
         ]
         resources:
           limits:

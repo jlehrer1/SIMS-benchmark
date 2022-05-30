@@ -94,6 +94,7 @@ if __name__ == "__main__":
         # currgenes=human_cols,
         # refgenes=refgenes,
         # preprocess=False,
+        stratify=False,
     )
 
     wandb_logger = WandbLogger(

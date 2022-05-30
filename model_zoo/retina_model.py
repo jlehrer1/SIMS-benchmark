@@ -1,9 +1,13 @@
 import os
+import sys
 import pathlib 
 import torch 
 import argparse 
 import pytorch_lightning as pl 
 from pytorch_lightning.loggers import WandbLogger
+
+from os.path import join, dirname, abspath
+sys.path.append(join(dirname(abspath(__file__)), '..'))
 
 from scsims import *
 from os.path import join 

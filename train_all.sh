@@ -4,3 +4,4 @@ export TYPE=retina && export NAME=retina-big-batch && envsubst < yaml/model.yaml
 export TYPE=dental && export NAME=dental-big-batch && envsubst < yaml/model.yaml | kubectl create -f -
 export TYPE=pancreas && export NAME=pancreas-big-batch && envsubst < yaml/model.yaml | kubectl create -f -
 export TYPE=mostajo_mouse && export NAME=mostajo-mouse-big-batch && envsubst < yaml/model.yaml | kubectl create -f -
+export TYPE=bhaduri_primary && export NAME=bhaduri-primary && envsubst < yaml/model.yaml | kubectl create -f 

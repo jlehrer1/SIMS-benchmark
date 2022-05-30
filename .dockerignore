@@ -2,3 +2,5 @@ data/*
 yaml/*
 checkpoints/*
 notebooks/*
+wandb/*
+

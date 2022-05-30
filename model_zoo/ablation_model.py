@@ -62,6 +62,7 @@ if __name__ == "__main__":
     size = pd.read_csv(join(data_path, 'mouse_labels_clean.csv')).shape[0]
     sample = int(prop * size)
     sample = random.sample(range(0, size), sample)
+
     module = DataModule(
         datafiles=[join(data_path, 'mouse_clipped.h5ad')],
         labelfiles=[join(data_path, 'mouse_labels_clean.csv')],
@@ -74,10 +75,9 @@ if __name__ == "__main__":
         normalize=True,
         assume_numeric_label=False,
         subset=(sample if prop < 1 else None), # dont do this if we're using the entire dataset 
-        stratify=True,
+        stratify=False,
     )
 
-    print(f"{len(sample)} / {len(module)}")
 
     wandb_logger = WandbLogger(
         project=f"Ablation Study, Mouse",
@@ -112,6 +112,9 @@ if __name__ == "__main__":
     if not test:
         module.prepare_data()
         module.setup()
+
+        print(f"Dataloader train dataset shape is {len(module.trainloader.dataset)}")
+        print(f"{len(sample)} / {len(module)}")
 
         model = SIMSClassifier(
             input_dim=module.num_features,
