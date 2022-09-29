@@ -1,18 +1,20 @@
 import os
-import pathlib 
+import pathlib
 import sys
 import anndata as an
-import torch 
-import argparse 
+import torch
+import argparse
 
 from os.path import join, dirname, abspath
-sys.path.append(join(dirname(abspath(__file__)), '..'))
 
-import anndata as an 
-import sys, os 
-sys.path.append('../src')
+sys.path.append(join(dirname(abspath(__file__)), ".."))
 
-import pathlib 
+import anndata as an
+import sys, os
+
+sys.path.append("../src")
+
+import pathlib
 from typing import *
 
 import torch
@@ -23,62 +25,57 @@ from pytorch_lightning.loggers import WandbLogger
 
 from scsims import *
 from torchmetrics.functional import *
-from networking import * 
+from networking import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--name',
+        "--name",
         type=str,
         default=None,
         required=False,
     )
 
     parser.add_argument(
-        '--test',
-        action='store_true',
+        "--test",
+        action="store_true",
         required=False,
     )
 
-    device = ('cuda:0' if torch.cuda.is_available() else None)
+    device = "cuda:0" if torch.cuda.is_available() else None
 
     args = parser.parse_args()
-    name, test = args.name, args.test 
+    name, test = args.name, args.test
 
     here = pathlib.Path(__file__).parent.resolve()
-    data_path = join(here, '..', 'data', 'bhaduri')
+    data_path = join(here, "..", "data", "bhaduri")
 
-    print('Making data folder')
+    print("Making data folder")
     os.makedirs(data_path, exist_ok=True)
 
-    for file in [
-        'primary_T.h5ad', 
-        'organoid_T.h5ad', 
-        'primary_labels_clean.csv', 
-        'organoid_labels_clean.csv'
-    ]:
-        print(f'Downloading {file}')
+    for file in ["primary_T.h5ad", "organoid_T.h5ad", "primary_labels_clean.csv", "organoid_labels_clean.csv"]:
+        print(f"Downloading {file}")
 
         if not os.path.isfile(join(data_path, file)):
             download(
-                remote_name=join('jlehrer', 'bhaduri_data', file),
+                remote_name=join("jlehrer", "bhaduri_data", file),
                 file_name=join(data_path, file),
             )
 
-    primary = an.read_h5ad(join(data_path, 'primary_T.h5ad'), backed='r+')
-    organoid = an.read_h5ad(join(data_path, 'organoid_T.h5ad'), backed='r+')
+    primary = an.read_h5ad(join(data_path, "primary_T.h5ad"), backed="r+")
+    organoid = an.read_h5ad(join(data_path, "organoid_T.h5ad"), backed="r+")
 
-    prim_genes = [x.upper() for x in primary.var['index'].values]
-    org_genes = [x.upper() for x in organoid.var['index'].apply(lambda x: x.split('|')[0]).values]
+    prim_genes = [x.upper() for x in primary.var["index"].values]
+    org_genes = [x.upper() for x in organoid.var["index"].apply(lambda x: x.split("|")[0]).values]
     refgenes = list(set(prim_genes).intersection(org_genes))
 
     module = DataModule(
-        datafiles=[join(data_path, 'primary_T.h5ad')],
-        labelfiles=[join(data_path, 'primary_labels_clean.csv')],
-        class_label='Subtype',
-        sep=',',
+        datafiles=[join(data_path, "primary_T.h5ad")],
+        labelfiles=[join(data_path, "primary_labels_clean.csv")],
+        class_label="Subtype",
+        sep=",",
         batch_size=256,
-        index_col='cell',
+        index_col="cell",
         num_workers=32,
         deterministic=True,
         normalize=True,
@@ -93,15 +90,12 @@ if __name__ == "__main__":
         name=name,
     )
 
-    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
 
-    upload_callback = UploadCallback(
-        path='checkpoints',
-        desc='bhaduri_primary_cortical_weighted'
-    )
-    
+    upload_callback = UploadCallback(path="checkpoints", desc="bhaduri_primary_cortical_weighted")
+
     early_stopping_callback = pl.callbacks.EarlyStopping(
-        monitor='val_loss',
+        monitor="val_loss",
         patience=50,
     )
 
@@ -112,10 +106,10 @@ if __name__ == "__main__":
         max_epochs=500,
         gradient_clip_val=0.5,
         callbacks=[
-            lr_callback, 
+            lr_callback,
             upload_callback,
             early_stopping_callback,
-        ]
+        ],
     )
 
     if not test:

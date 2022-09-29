@@ -1,62 +1,59 @@
 import os
 import sys
-import pathlib 
-import torch 
-import argparse 
-import pytorch_lightning as pl 
+import pathlib
+import torch
+import argparse
+import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 
 from os.path import join, dirname, abspath
-sys.path.append(join(dirname(abspath(__file__)), '..'))
+
+sys.path.append(join(dirname(abspath(__file__)), ".."))
 
 from scsims import *
-from os.path import join 
-from networking import * 
+from os.path import join
+from networking import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--name',
+        "--name",
         type=str,
         default=None,
         required=False,
     )
 
-    parser.add_argument(
-        '--test',
-        action='store_true',
-        required=False
-    )
+    parser.add_argument("--test", action="store_true", required=False)
 
     args = parser.parse_args()
-    name, test = args.name, args.test 
+    name, test = args.name, args.test
 
     here = pathlib.Path(__file__).parent.resolve()
-    data_path = join(here, '..', 'data', 'retina')
+    data_path = join(here, "..", "data", "retina")
 
-    print('Making data folder')
+    print("Making data folder")
     os.makedirs(data_path, exist_ok=True)
 
-    for file in ['retina_T.h5ad', 'retina_labels_numeric.csv']:
-        print(f'Downloading {file}')
+    for file in ["retina_T.h5ad", "retina_labels_numeric.csv"]:
+        print(f"Downloading {file}")
 
         if not os.path.isfile(join(data_path, file)):
             download(
-                remote_name=join('jlehrer', 'retina', file),
+                remote_name=join("jlehrer", "retina", file),
                 file_name=join(data_path, file),
             )
 
     # Define labelfiles and trainer
-    datafiles=[join(data_path, 'retina_T.h5ad')]
-    labelfiles=[join(data_path, 'retina_labels_numeric.csv')]
+    datafiles = [join(data_path, "retina_T.h5ad")]
+    labelfiles = [join(data_path, "retina_labels_numeric.csv")]
 
-    device = ('cuda:0' if torch.cuda.is_available() else None)
+    device = "cuda:0" if torch.cuda.is_available() else None
 
     module = DataModule(
         datafiles=datafiles,
         labelfiles=labelfiles,
-        class_label='class_label',
-        index_col='cell',
+        class_label="class_label",
+        index_col="cell",
         batch_size=16,
         num_workers=0,
         shuffle=True,
@@ -70,14 +67,11 @@ if __name__ == "__main__":
         name=name,
     )
 
-    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
 
-    upload_callback = UploadCallback(
-        path='checkpoints',
-        desc='retina'
-    )
+    upload_callback = UploadCallback(path="checkpoints", desc="retina")
     early_stopping_callback = pl.callbacks.EarlyStopping(
-        monitor='val_loss',
+        monitor="val_loss",
         patience=20,
     )
 
@@ -88,10 +82,10 @@ if __name__ == "__main__":
         max_epochs=500,
         gradient_clip_val=0.5,
         callbacks=[
-            lr_callback, 
+            lr_callback,
             upload_callback,
             early_stopping_callback,
-        ]
+        ],
     )
 
     if not test:
@@ -103,15 +97,12 @@ if __name__ == "__main__":
         # train model
         trainer.fit(model, datamodule=module)
         trainer.test(model, datamodule=module)
-    else:  
-        checkpoint_path = join(here, '..', 'checkpoints/checkpoint-80-desc-retina.ckpt')
+    else:
+        checkpoint_path = join(here, "..", "checkpoints/checkpoint-80-desc-retina.ckpt")
 
         if not os.path.isfile(checkpoint_path):
-            os.makedirs(join(here, '..', 'checkpoints'), exist_ok=True)
-            download(
-                'jlehrer/model_checkpoints/checkpoint-80-desc-retina.ckpt',
-                checkpoint_path
-            )
+            os.makedirs(join(here, "..", "checkpoints"), exist_ok=True)
+            download("jlehrer/model_checkpoints/checkpoint-80-desc-retina.ckpt", checkpoint_path)
 
         model = SIMSClassifier.load_from_checkpoint(
             checkpoint_path,

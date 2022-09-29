@@ -3,4 +3,5 @@ yaml/*
 checkpoints/*
 notebooks/*
 wandb/*
-
+cd4_atlas/*
+.git/*

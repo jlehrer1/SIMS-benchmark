@@ -1,21 +1,37 @@
-FROM pytorch/pytorch
+FROM anibali/pytorch:1.10.2-cuda11.3
+USER root
 
 WORKDIR /src
 
-RUN apt-get update
-RUN apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+RUN sudo apt-get update
+RUN sudo apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get --allow-releaseinfo-change update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-        sudo \
-        vim 
+RUN sudo apt-get --allow-releaseinfo-change update && \
+    sudo apt-get install -y --no-install-recommends \
+    curl \
+    sudo \
+    vim
 
 RUN curl -L https://bit.ly/glances | /bin/bash
 
-RUN pip install scvi-tools wandb 
-RUN pip install pytorch_lightning
-RUN pip install boto3 
-RUN pip install scsims==1.0.2
+RUN pip install matplotlib \
+    seaborn \
+    pytorch-lightning \
+    comet_ml \
+    wandb \
+    pytorch-tabnet \
+    scanpy \
+    anndata \
+    sklearn \
+    boto3 \ 
+    tenacity \ 
+    pandas \
+    plotly \
+    scipy
+
+RUN pip install git+https://github.com/jlehrer1/sims
+
+# Is this breaking everything
+# RUN pip install scvi-tools
 
 COPY . .

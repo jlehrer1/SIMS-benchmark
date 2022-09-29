@@ -1,27 +1,29 @@
 import os
-import pathlib 
+import pathlib
 import sys
 import anndata as an
-import torch 
-import argparse 
+import torch
+import argparse
 
 from os.path import join, dirname, abspath
-sys.path.append(join(dirname(abspath(__file__)), '..'))
 
-import pandas as pd 
-import numpy as np 
-import anndata as an 
-import sys, os 
-sys.path.append('../src')
+sys.path.append(join(dirname(abspath(__file__)), ".."))
+
+import pandas as pd
+import numpy as np
+import anndata as an
+import sys, os
+
+sys.path.append("../src")
 
 import sys
 import os
-import pathlib 
+import pathlib
 from typing import *
 
 import torch
-import numpy as np 
-import pandas as pd 
+import numpy as np
+import pandas as pd
 import anndata as an
 
 import pytorch_lightning as pl
@@ -29,50 +31,50 @@ from pytorch_lightning.loggers import WandbLogger
 
 from scsims import *
 from torchmetrics.functional import *
-from networking import * 
+from networking import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--name',
+        "--name",
         type=str,
         default=None,
         required=False,
     )
 
     parser.add_argument(
-        '--test',
-        action='store_true',
+        "--test",
+        action="store_true",
         required=False,
     )
 
-    device = ('cuda:0' if torch.cuda.is_available() else None)
+    device = "cuda:0" if torch.cuda.is_available() else None
 
     args = parser.parse_args()
-    name, test = args.name, args.test 
+    name, test = args.name, args.test
 
     here = pathlib.Path(__file__).parent.resolve()
-    data_path = join(here, '..', 'data', 'pancreas')
+    data_path = join(here, "..", "data", "pancreas")
 
-    print('Making data folder')
+    print("Making data folder")
     os.makedirs(data_path, exist_ok=True)
 
-    for file in ['labels.csv', 'pancreas.h5ad']:
-        print(f'Downloading {file}')
+    for file in ["labels.csv", "pancreas.h5ad"]:
+        print(f"Downloading {file}")
 
         if not os.path.isfile(join(data_path, file)):
             download(
-                remote_name=join('jlehrer', 'pancreas_data', file),
+                remote_name=join("jlehrer", "pancreas_data", file),
                 file_name=join(data_path, file),
             )
 
     module = DataModule(
-        datafiles=[join(data_path, 'pancreas.h5ad')],
-        labelfiles=[join(data_path, 'labels.csv')],
-        class_label='celltype',
-        sep=',',
+        datafiles=[join(data_path, "pancreas.h5ad")],
+        labelfiles=[join(data_path, "labels.csv")],
+        class_label="celltype",
+        sep=",",
         batch_size=16,
-        index_col='cell',
+        index_col="cell",
         num_workers=0,
         deterministic=True,
         normalize=True,
@@ -84,15 +86,12 @@ if __name__ == "__main__":
         name=name,
     )
 
-    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
 
-    upload_callback = UploadCallback(
-        path='checkpoints',
-        desc='pancreas_model'
-    )
-    
+    upload_callback = UploadCallback(path="checkpoints", desc="pancreas_model")
+
     early_stopping_callback = pl.callbacks.EarlyStopping(
-        monitor='val_loss',
+        monitor="val_loss",
         patience=50,
     )
 
@@ -103,10 +102,10 @@ if __name__ == "__main__":
         max_epochs=500,
         gradient_clip_val=0.5,
         callbacks=[
-            lr_callback, 
+            lr_callback,
             upload_callback,
             early_stopping_callback,
-        ]
+        ],
     )
 
     if not test:
@@ -118,8 +117,8 @@ if __name__ == "__main__":
             output_dim=module.num_labels,
             weights=module.weights,
             scheduler_params={
-                'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
-                'factor': 0.75,
+                "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau,
+                "factor": 0.75,
             },
         )
 

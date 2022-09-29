@@ -1,75 +1,77 @@
 import os
-import pathlib 
+import pathlib
 import sys
 import anndata as an
-import torch 
-import argparse 
+import torch
+import argparse
 
 from os.path import join, dirname, abspath
-sys.path.append(join(dirname(abspath(__file__)), '..'))
 
-import pandas as pd 
-import numpy as np 
-import anndata as an 
-import sys, os 
-sys.path.append('../src')
+sys.path.append(join(dirname(abspath(__file__)), ".."))
+
+import pandas as pd
+import numpy as np
+import anndata as an
+import sys, os
+
+sys.path.append("../src")
 
 import sys
 import os
-import pathlib 
+import pathlib
 from typing import *
 
 import torch
-import numpy as np 
-import pandas as pd 
+import numpy as np
+import pandas as pd
 import anndata as an
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 
 from scsims import *
-from networking import * 
+from networking import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--name',
+        "--name",
         type=str,
         default=None,
         required=False,
     )
 
     parser.add_argument(
-        '--test',
-        action='store_true',
+        "--test",
+        action="store_true",
         required=False,
     )
 
-    device = ('cuda:0' if torch.cuda.is_available() else None)
+    device = "cuda:0" if torch.cuda.is_available() else None
 
     args = parser.parse_args()
-    name, test = args.name, args.test 
+    name, test = args.name, args.test
 
     here = pathlib.Path(__file__).parent.resolve()
-    data_path = join(here, '..', 'data', 'dental')
+    data_path = join(here, "..", "data", "dental")
 
-    print('Making data folder')
+    print("Making data folder")
     os.makedirs(data_path, exist_ok=True)
 
-    for file in ['human_dental_T.h5ad', 'labels_human_dental.tsv']:
-        print(f'Downloading {file}')
+    for file in ["human_dental_T.h5ad", "labels_human_dental.tsv"]:
+        print(f"Downloading {file}")
 
         if not os.path.isfile(join(data_path, file)):
             download(
-                remote_name=join('jlehrer', 'dental', file),
+                remote_name=join("jlehrer", "dental", file),
                 file_name=join(data_path, file),
             )
 
     module = DataModule(
-        datafiles=[join(data_path, 'human_dental_T.h5ad')],
-        labelfiles=[join(data_path, 'labels_human_dental.tsv')],
-        class_label='cell_type',
-        sep='\t',
+        datafiles=[join(data_path, "human_dental_T.h5ad")],
+        labelfiles=[join(data_path, "labels_human_dental.tsv")],
+        class_label="cell_type",
+        sep="\t",
         batch_size=256,
         num_workers=32,
         deterministic=True,
@@ -81,15 +83,12 @@ if __name__ == "__main__":
         name=name,
     )
 
-    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
 
-    upload_callback = UploadCallback(
-        path='checkpoints',
-        desc='dental'
-    )
-    
+    upload_callback = UploadCallback(path="checkpoints", desc="dental")
+
     early_stopping_callback = pl.callbacks.EarlyStopping(
-        monitor='val_loss',
+        monitor="val_loss",
         patience=4,
     )
 
@@ -100,16 +99,16 @@ if __name__ == "__main__":
         max_epochs=500,
         gradient_clip_val=0.5,
         callbacks=[
-            lr_callback, 
+            lr_callback,
             upload_callback,
             early_stopping_callback,
-        ]
+        ],
     )
 
     if not test:
         module.prepare_data()
         module.setup()
-        
+
         model = SIMSClassifier(
             input_dim=module.num_features,
             output_dim=module.num_labels,
@@ -119,18 +118,15 @@ if __name__ == "__main__":
         trainer.fit(model, datamodule=module)
         trainer.test(model, datamodule=module)
     else:
-        checkpoint_path = join(here, '..', 'checkpoints/checkpoint-80-desc-dental.ckpt')
+        checkpoint_path = join(here, "..", "checkpoints/checkpoint-80-desc-dental.ckpt")
         if not os.path.isfile(checkpoint_path):
-            os.makedirs(join(here, '..', 'checkpoints'), exist_ok=True)
-            download(
-                remote_name='jlehrer/model_checkpoints/checkpoint-80-desc-dental.ckpt',
-                file_name=checkpoint_path
-            )
+            os.makedirs(join(here, "..", "checkpoints"), exist_ok=True)
+            download(remote_name="jlehrer/model_checkpoints/checkpoint-80-desc-dental.ckpt", file_name=checkpoint_path)
 
         model = SIMSClassifier.load_from_checkpoint(
-            join(here, '..', 'checkpoints/checkpoint-80-desc-dental.ckpt'),
+            join(here, "..", "checkpoints/checkpoint-80-desc-dental.ckpt"),
             input_dim=module.input_dim,
-            output_dim=module.output_dim
+            output_dim=module.output_dim,
         )
 
         trainer.test(model, datamodule=module)

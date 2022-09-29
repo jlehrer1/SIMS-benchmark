@@ -1,34 +1,35 @@
 import os
-import pathlib 
+import pathlib
 import sys
 import anndata as an
-import torch 
-import argparse 
+import torch
+import argparse
 
 from os.path import join, dirname, abspath
-sys.path.append(join(dirname(abspath(__file__)), '..'))
+
+sys.path.append(join(dirname(abspath(__file__)), ".."))
 
 
-import pytorch_lightning as pl 
+import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
-from torchmetrics.functional import * 
+from torchmetrics.functional import *
 
 from scsims import *
-from networking import * 
+from networking import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--name',
+        "--name",
         type=str,
         default=None,
         required=False,
     )
 
     parser.add_argument(
-        '--test',
+        "--test",
         default=False,
-        action='store_true',
+        action="store_true",
         required=False,
     )
 
@@ -36,23 +37,27 @@ if __name__ == "__main__":
     name, test = args.name, args.test
 
     here = pathlib.Path(__file__).parent.resolve()
-    data_path = join(here, '..', 'data', 'mouse')
+    data_path = join(here, "..", "data", "mouse")
 
-    print('Making data folder')
+    print("Making data folder")
     os.makedirs(data_path, exist_ok=True)
 
-    for file in ['MouseAdultInhibitoryNeurons.h5ad', 'Mo_PV_paper_TDTomato_mouseonly.h5ad', 'MouseAdultInhibitoryNeurons_labels.csv']:
-        print(f'Downloading {file}')
+    for file in [
+        "MouseAdultInhibitoryNeurons.h5ad",
+        "Mo_PV_paper_TDTomato_mouseonly.h5ad",
+        "MouseAdultInhibitoryNeurons_labels.csv",
+    ]:
+        print(f"Downloading {file}")
 
         if not os.path.isfile(join(data_path, file)):
             download(
-                remote_name=join('jlehrer', 'mouse_data', file),
+                remote_name=join("jlehrer", "mouse_data", file),
                 file_name=join(data_path, file),
             )
 
     # Calculate gene intersection
-    mouse_atlas = an.read_h5ad(join(data_path, 'MouseAdultInhibitoryNeurons.h5ad'))
-    mo_data = an.read_h5ad(join(data_path, 'Mo_PV_paper_TDTomato_mouseonly.h5ad'))
+    mouse_atlas = an.read_h5ad(join(data_path, "MouseAdultInhibitoryNeurons.h5ad"))
+    mo_data = an.read_h5ad(join(data_path, "Mo_PV_paper_TDTomato_mouseonly.h5ad"))
 
     mo_genes = mo_data.var.index.values
     atlas_genes = mouse_atlas.var.index.values
@@ -62,16 +67,16 @@ if __name__ == "__main__":
 
     refgenes = sorted(list(set(mo_genes).intersection(atlas_genes)))
 
-    # # Define labelfiles and trainer 
-    datafiles=[join(data_path, 'MouseAdultInhibitoryNeurons.h5ad')]
-    labelfiles=[join(data_path, 'MouseAdultInhibitoryNeurons_labels.csv')]
+    # # Define labelfiles and trainer
+    datafiles = [join(data_path, "MouseAdultInhibitoryNeurons.h5ad")]
+    labelfiles = [join(data_path, "MouseAdultInhibitoryNeurons_labels.csv")]
 
-    device = ('cuda:0' if torch.cuda.is_available() else None)
+    device = "cuda:0" if torch.cuda.is_available() else None
 
     module = DataModule(
         datafiles=datafiles,
         labelfiles=labelfiles,
-        class_label='numeric_class',
+        class_label="numeric_class",
         batch_size=8,
         num_workers=0,
         shuffle=True,
@@ -82,22 +87,19 @@ if __name__ == "__main__":
         deterministic=True,
     )
 
-    print(f'Number of classes in {__file__} is {module.output_dim}')
+    print(f"Number of classes in {__file__} is {module.output_dim}")
 
     wandb_logger = WandbLogger(
         project=f"Mostajo Mouse Model",
         name=name,
     )
 
-    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
 
-    upload_callback = UploadCallback(
-        path='checkpoints',
-        desc='mostajo-mouse-5-24-22-more-more-layers-weighted'
-    )
+    upload_callback = UploadCallback(path="checkpoints", desc="mostajo-mouse-5-24-22-more-more-layers-weighted")
 
     early_stopping_callback = pl.callbacks.EarlyStopping(
-        monitor='val_loss',
+        monitor="val_loss",
         patience=20,
     )
 
@@ -108,16 +110,16 @@ if __name__ == "__main__":
         max_epochs=500,
         gradient_clip_val=0.5,
         callbacks=[
-            lr_callback, 
+            lr_callback,
             upload_callback,
             early_stopping_callback,
-        ]
+        ],
     )
 
     if not test:
         module.prepare_data()
         module.setup()
-        
+
         model = SIMSClassifier(
             input_dim=module.num_features,
             output_dim=module.num_labels,
@@ -131,13 +133,13 @@ if __name__ == "__main__":
         trainer.fit(model, datamodule=module)
         trainer.test(model, datamodule=module)
     else:
-        checkpoint_path = join(here, '..', 'checkpoints', 'checkpoint-280-desc-mouse.ckpt')
+        checkpoint_path = join(here, "..", "checkpoints", "checkpoint-280-desc-mouse.ckpt")
 
         if not os.path.isfile(checkpoint_path):
-            os.makedirs(join(here, '../checkpoints'), exist_ok=True)
-            print('Downloading file')
+            os.makedirs(join(here, "../checkpoints"), exist_ok=True)
+            print("Downloading file")
             download(
-                'jlehrer/model_checkpoints/checkpoint-280-desc-mouse.ckpt',
+                "jlehrer/model_checkpoints/checkpoint-280-desc-mouse.ckpt",
                 checkpoint_path,
             )
 

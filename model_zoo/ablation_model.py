@@ -1,98 +1,95 @@
 import os
-import pathlib 
+import pathlib
 import sys
 import anndata as an
-import torch 
-import argparse 
-import random 
-import pandas as pd 
+import torch
+import argparse
+import random
+import pandas as pd
 
 from os.path import join, dirname, abspath
-sys.path.append(join(dirname(abspath(__file__)), '..', 'src'))
+
+sys.path.append(join(dirname(abspath(__file__)), "..", "src"))
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 
 from scsims import *
 from torchmetrics.functional import *
-from networking import * 
+from networking import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--name',
+        "--name",
         type=str,
         default=None,
         required=False,
     )
 
     parser.add_argument(
-        '--test',
-        action='store_true',
+        "--test",
+        action="store_true",
         required=False,
     )
 
     parser.add_argument(
-        '--prop',
+        "--prop",
         type=float,
         default=0.5,
-        help='Proportion of dataset to use in ablation',
+        help="Proportion of dataset to use in ablation",
     )
 
-    device = ('cuda:0' if torch.cuda.is_available() else None)
+    device = "cuda:0" if torch.cuda.is_available() else None
 
     args = parser.parse_args()
     name, test, prop = args.name, args.test, args.prop
 
     here = pathlib.Path(__file__).parent.resolve()
-    data_path = join(here, '..', 'data', 'benchmark')
+    data_path = join(here, "..", "data", "benchmark")
 
-    print('Making data folder')
+    print("Making data folder")
     os.makedirs(data_path, exist_ok=True)
 
-    for file in ['mouse_labels_clean.csv', 'mouse_clipped.h5ad']:
-        print(f'Downloading {file}')
+    for file in ["mouse_labels_clean.csv", "mouse_clipped.h5ad"]:
+        print(f"Downloading {file}")
 
         if not os.path.isfile(join(data_path, file)):
             download(
-                remote_name=join('jlehrer', 'mouse_benchmark', file),
+                remote_name=join("jlehrer", "mouse_benchmark", file),
                 file_name=join(data_path, file),
             )
 
-    size = pd.read_csv(join(data_path, 'mouse_labels_clean.csv')).shape[0]
+    size = pd.read_csv(join(data_path, "mouse_labels_clean.csv")).shape[0]
     sample = int(prop * size)
     sample = random.sample(range(0, size), sample)
 
     module = DataModule(
-        datafiles=[join(data_path, 'mouse_clipped.h5ad')],
-        labelfiles=[join(data_path, 'mouse_labels_clean.csv')],
-        class_label='subclass_label',
-        sep=',',
+        datafiles=[join(data_path, "mouse_clipped.h5ad")],
+        labelfiles=[join(data_path, "mouse_labels_clean.csv")],
+        class_label="subclass_label",
+        sep=",",
         batch_size=64,
-        index_col='cell',
+        index_col="cell",
         num_workers=32,
         deterministic=True,
         normalize=True,
         assume_numeric_label=False,
-        subset=(sample if prop < 1 else None), # dont do this if we're using the entire dataset 
+        subset=(sample if prop < 1 else None),  # dont do this if we're using the entire dataset
         stratify=False,
     )
-
 
     wandb_logger = WandbLogger(
         project=f"Ablation Study, Mouse",
         name=f"mouse_proportion={prop}",
     )
 
-    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
 
-    upload_callback = UploadCallback(
-        path='checkpoints',
-        desc=f'ablation_mouse_{prop}'
-    )
-    
+    upload_callback = UploadCallback(path="checkpoints", desc=f"ablation_mouse_{prop}")
+
     early_stopping_callback = pl.callbacks.EarlyStopping(
-        monitor='val_loss',
+        monitor="val_loss",
         patience=50,
     )
 
@@ -103,10 +100,10 @@ if __name__ == "__main__":
         max_epochs=500,
         gradient_clip_val=0.5,
         callbacks=[
-            lr_callback, 
+            lr_callback,
             upload_callback,
             early_stopping_callback,
-        ]
+        ],
     )
 
     if not test:
